@@ -156,7 +156,7 @@ celda_CG <- function(counts,
     } else {
         if (isFALSE(is.null(counts2))) {
             with_seed(seed,
-                res <- .celda_C_mm(counts,
+                res <- .celda_CG_mm(counts,
                     counts2,
                     sampleLabel,
                     K,
@@ -180,7 +180,7 @@ celda_CG <- function(counts,
                     verbose))
         } else {
             with_seed(seed,
-                res <- .celda_C(counts,
+                res <- .celda_CG(counts,
                     sampleLabel,
                     K,
                     L,
