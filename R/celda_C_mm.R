@@ -54,17 +54,21 @@
     s <- as.integer(sampleLabel)
 
     algorithm <- match.arg(algorithm)
-    if (algorithm == "EM") {
-        stopIter <- 1
-    }
 
     if (algorithm == "Gibbs") {
         stop("Gibbs sampling has not been implemented for multi-modal",
         " clustering yet. Use 'EM' instead.")
     } else if (algorithm == "EM") {
+        stopIter <- 1
         algorithmFun <- ".cCCalcEMProbZMM"
     } else {
         stop("Invalid input '", algorithm, "' for 'algorithm'")
+    }
+
+    if (zInitialize == "split") {
+        stop("Method 'split' for 'zInitialize' is not implemented for",
+            " multi-modal clustering yet. Use 'random' or 'predefined'",
+            " instead.")
     }
 
     zInitialize <- match.arg(zInitialize)
@@ -135,17 +139,17 @@
                 counts2 = counts2,
                 mCPByS = mCPByS,
                 nGByCP = nGByCP,
-                nByC = nByC,
+                #nByC = nByC,
                 nCP = nCP,
                 nGByCP2 = nGByCP2,
-                nByC2 = nByC2,
+                #nByC2 = nByC2,
                 nCP2 = nCP2,
                 z = z,
                 s = s,
                 K = K,
-                nG = nG,
-                nG2 = nG2,
-                nM = nM,
+                # nG = nG,
+                # nG2 = nG2,
+                # nM = nM,
                 alpha = alpha,
                 beta = beta))
 
@@ -182,7 +186,6 @@
                     sep = "",
                     verbose = verbose)
 
-                # the splitting of clusters do not consider protein counts
                 res <- .cCSplitZMM(counts,
                     counts2,
                     mCPByS,
@@ -323,17 +326,17 @@
     counts2,
     mCPByS,
     nGByCP,
-    nByC,
+    # nByC,
     nCP,
     nGByCP2,
-    nByC2,
+    # nByC2,
     nCP2,
     z,
     s,
     K,
-    nG,
-    nG2,
-    nM,
+    # nG,
+    # nG2,
+    # nM,
     alpha,
     beta,
     doSample = TRUE) {
@@ -426,8 +429,8 @@
 .cCDecomposeCountsMM <- function(counts, counts2, s, z, K) {
     nS <- length(unique(s))
     nG <- nrow(counts)
-    nM <- ncol(counts)
     nG2 <- nrow(counts2)
+    nM <- ncol(counts)
 
     mCPByS <- matrix(as.integer(table(factor(z, levels = seq(K)), s)),
         ncol = nS)

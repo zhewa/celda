@@ -4,8 +4,8 @@
 \alias{celda_CG}
 \title{Cell and feature clustering with Celda}
 \usage{
-celda_CG(counts, sampleLabel = NULL, K, L, alpha = 1, beta = 1,
-  delta = 1, gamma = 1, algorithm = c("EM", "Gibbs"),
+celda_CG(counts, counts2 = NULL, sampleLabel = NULL, K, L, alpha = 1,
+  beta = 1, delta = 1, gamma = 1, algorithm = c("EM", "Gibbs"),
   stopIter = 10, maxIter = 200, splitOnIter = 10,
   splitOnLast = TRUE, seed = 12345, nchains = 3,
   zInitialize = c("split", "random", "predefined"),
@@ -16,6 +16,11 @@ celda_CG(counts, sampleLabel = NULL, K, L, alpha = 1, beta = 1,
 \arguments{
 \item{counts}{Integer matrix. Rows represent features and columns represent
 cells.}
+
+\item{counts2}{Integer matrix. It's needed only for the multi-modal celda
+clustering algorithm. This count matrix represents the additional
+quantification of the other layer for multi-modality data (i.e. CITE-seq).
+For example, for CITE-seq data, the protein counts should be provided here.}
 
 \item{sampleLabel}{Vector or factor. Denotes the sample label for each cell
 (column) in the count matrix.}

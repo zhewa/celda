@@ -1,83 +1,5 @@
-#' @title Cell and feature clustering with Celda
-#' @description Clusters the rows and columns of a count matrix containing
-#'  single-cell data into L modules and K subpopulations, respectively.
-#' @param counts Integer matrix. Rows represent features and columns represent
-#'  cells.
-#' @param counts2 Integer matrix. It's needed only for the multi-modal celda
-#'  clustering algorithm. This count matrix represents the additional
-#'  quantification of the other layer for multi-modality data (i.e. CITE-seq).
-#'  For example, for CITE-seq data, the protein counts should be provided here.
-#' @param sampleLabel Vector or factor. Denotes the sample label for each cell
-#'  (column) in the count matrix.
-#' @param K Integer. Number of cell populations.
-#' @param L Integer. Number of feature modules.
-#' @param alpha Numeric. Concentration parameter for Theta. Adds a pseudocount
-#'  to each cell population in each sample. Default 1.
-#' @param beta Numeric. Concentration parameter for Phi. Adds a pseudocount to
-#'  each feature module in each cell population. Default 1.
-#' @param delta Numeric. Concentration parameter for Psi. Adds a pseudocount to
-#'  each feature in each module. Default 1.
-#' @param gamma Numeric. Concentration parameter for Eta. Adds a pseudocount to
-#'  the number of features in each module. Default 1.
-#' @param algorithm String. Algorithm to use for clustering cell subpopulations.
-#'  One of 'EM' or 'Gibbs'. The EM algorithm for cell clustering is faster,
-#'  especially for larger numbers of cells. However, more chains may be required
-#'  to ensure a good solution is found. Default 'EM'.
-#' @param stopIter Integer. Number of iterations without improvement in the log
-#'  likelihood to stop inference. Default 10.
-#' @param maxIter Integer. Maximum number of iterations of Gibbs sampling to
-#'  perform. Default 200.
-#' @param splitOnIter Integer. On every `splitOnIter` iteration, a heuristic
-#'  will be applied to determine if a cell population or feature module should
-#'  be reassigned and another cell population or feature module should be split
-#'  into two clusters. To disable splitting, set to -1. Default 10.
-#' @param splitOnLast Integer. After `stopIter` iterations have been
-#'  performed without improvement, a heuristic will be applied to determine if
-#'  a cell population or feature module should be reassigned and another cell
-#'  population or feature module should be split into two clusters. If a split
-#'  occurs, then 'stopIter' will be reset. Default TRUE.
-#' @param seed Integer. Passed to \link[withr]{with_seed}. For reproducibility,
-#'  a default value of 12345 is used. If NULL, no calls to
-#'  \link[withr]{with_seed} are made.
-#' @param nchains Integer. Number of random cluster initializations. Default 3.
-#' @param zInitialize Chararacter. One of 'random', 'split', or 'predefined'.
-#'  With 'random', cells are randomly assigned to a populations. With 'split',
-#'  cells will be split into sqrt(K) populations and then each popluation will
-#'  be subsequently split into another sqrt(K) populations. With 'predefined',
-#'  values in `zInit` will be used to initialize `z`. Default 'split'.
-#' @param yInitialize Chararacter. One of 'random', 'split', or 'predefined'.
-#'  With 'random', features are randomly assigned to a modules. With 'split',
-#'  features will be split into sqrt(L) modules and then each module will be
-#'  subsequently split into another sqrt(L) modules. With 'predefined', values
-#'  in `yInit` will be used to initialize `y`. Default 'split'.
-#' @param zInit Integer vector. Sets initial starting values of z. If NULL,
-#'  starting values for each cell will be randomly sampled from 1:K. 'zInit'
-#'  can only be used when `initialize' = 'random'`. Default NULL.
-#' @param yInit Integer vector. Sets initial starting values of y. If NULL,
-#'  starting values for each feature will be randomly sampled from 1:L.
-#'  'yInit' can only be used when `initialize = 'random'`. Default NULL.
-#' @param countChecksum Character. An MD5 checksum for the `counts` matrix.
-#'  Default NULL.
-#' @param logfile Character. Messages will be redirected to a file named
-#'  `logfile`. If NULL, messages will be printed to stdout.  Default NULL.
-#' @param verbose Logical. Whether to print log messages. Default TRUE.
-#' @return An object of class `celda_CG` with the cell populations clusters
-#'  stored in `z` and feature module clusters stored in `y`.
-#' @seealso `celda_G()` for feature clustering and `celda_C()` for clustering
-#'  cells. `celdaGridSearch()` can be used to run multiple values of K/L and
-#'  multiple chains in parallel.
-#' @examples
-#' data(celdaCGSim)
-#' celdaMod <- celda_CG(celdaCGSim$counts,
-#'     K = celdaCGSim$K,
-#'     L = celdaCGSim$L,
-#'     sampleLabel = celdaCGSim$sampleLabel,
-#'     nchains = 1)
-#' @import Rcpp RcppEigen
-#' @rawNamespace import(gridExtra, except = c(combine))
-#' @export
-celda_CG <- function(counts,
-    counts2 = NULL,
+.celda_CG_mm <- function(counts,
+    counts2,
     sampleLabel = NULL,
     K,
     L,
@@ -92,150 +14,22 @@ celda_CG <- function(counts,
     splitOnLast = TRUE,
     seed = 12345,
     nchains = 3,
-    zInitialize = c("split", "random", "predefined"),
-    yInitialize = c("split", "random", "predefined"),
+    # zInitialize = c("split", "random", "predefined"),
+    # yInitialize = c("split", "random", "predefined"),
+    zInitialize = c("random", "predefined"),
+    yInitialize = c("random", "predefined"),
     countChecksum = NULL,
     zInit = NULL,
     yInit = NULL,
     logfile = NULL,
     verbose = TRUE) {
 
-    .validateCounts(counts)
-    if (isFALSE(is.null(counts2))) {
-        .validateCounts(counts2)
-    }
-
-    if (is.null(seed)) {
-        if (isFALSE(is.null(counts2))) {
-            res <- .celda_CG_mm(counts,
-                counts2,
-                sampleLabel,
-                K,
-                L,
-                alpha,
-                beta,
-                delta,
-                gamma,
-                algorithm,
-                stopIter,
-                maxIter,
-                splitOnIter,
-                splitOnLast,
-                nchains,
-                zInitialize,
-                yInitialize,
-                countChecksum,
-                zInit,
-                yInit,
-                logfile,
-                verbose)
-        } else {
-            res <- .celda_CG(counts,
-                sampleLabel,
-                K,
-                L,
-                alpha,
-                beta,
-                delta,
-                gamma,
-                algorithm,
-                stopIter,
-                maxIter,
-                splitOnIter,
-                splitOnLast,
-                nchains,
-                zInitialize,
-                yInitialize,
-                countChecksum,
-                zInit,
-                yInit,
-                logfile,
-                verbose,
-                reorder = TRUE)
-        }
-    } else {
-        if (isFALSE(is.null(counts2))) {
-            with_seed(seed,
-                res <- .celda_C_mm(counts,
-                    counts2,
-                    sampleLabel,
-                    K,
-                    L,
-                    alpha,
-                    beta,
-                    delta,
-                    gamma,
-                    algorithm,
-                    stopIter,
-                    maxIter,
-                    splitOnIter,
-                    splitOnLast,
-                    nchains,
-                    zInitialize,
-                    yInitialize,
-                    countChecksum,
-                    zInit,
-                    yInit,
-                    logfile,
-                    verbose))
-        } else {
-            with_seed(seed,
-                res <- .celda_C(counts,
-                    sampleLabel,
-                    K,
-                    L,
-                    alpha,
-                    beta,
-                    delta,
-                    gamma,
-                    algorithm,
-                    stopIter,
-                    maxIter,
-                    splitOnIter,
-                    splitOnLast,
-                    nchains,
-                    zInitialize,
-                    yInitialize,
-                    countChecksum,
-                    zInit,
-                    yInit,
-                    logfile,
-                    verbose,
-                    reorder = TRUE))
-        }
-    }
-    return(res)
-}
-
-.celda_CG <- function(counts,
-    sampleLabel = NULL,
-    K,
-    L,
-    alpha = 1,
-    beta = 1,
-    delta = 1,
-    gamma = 1,
-    algorithm = c("EM", "Gibbs"),
-    stopIter = 10,
-    maxIter = 200,
-    splitOnIter = 10,
-    splitOnLast = TRUE,
-    nchains = 3,
-    zInitialize = c("split", "random", "predefined"),
-    yInitialize = c("split", "random", "predefined"),
-    countChecksum = NULL,
-    zInit = NULL,
-    yInit = NULL,
-    logfile = NULL,
-    verbose = TRUE,
-    reorder = TRUE) {
-
     .logMessages(paste(rep("-", 50), collapse = ""),
         logfile = logfile,
         append = FALSE,
         verbose = verbose)
 
-    .logMessages("Starting Celda_CG: Clustering cells and genes.",
+    .logMessages("Starting multi-modal Celda_CG: Clustering cells and genes.",
         logfile = logfile,
         append = TRUE,
         verbose = verbose)
@@ -247,20 +41,52 @@ celda_CG <- function(counts,
 
     startTime <- Sys.time()
 
+    if (ncol(counts) != ncol(counts2)) {
+        stop("'counts2' should have the same number of columns as 'counts'!")
+    }
+
+    if (isTRUE(any(colnames(counts) != colnames(counts2)))) {
+        stop("'counts2' should have the same column names as 'counts'!")
+    }
+
+    ## Error checking and variable processing
     counts <- .processCounts(counts)
+    counts2 <- .processCounts(counts2)
     if (is.null(countChecksum)) {
-        countChecksum <- .createCountChecksum(counts)
+        countChecksum <- c(.createCountChecksum(counts),
+            .createCountChecksum(counts2))
     }
 
     sampleLabel <- .processSampleLabels(sampleLabel, ncol(counts))
     s <- as.integer(sampleLabel)
 
     algorithm <- match.arg(algorithm)
-    algorithmFun <- ifelse(algorithm == "Gibbs",
-        ".cCCalcGibbsProbZ",
-        ".cCCalcEMProbZ")
+
+    if (algorithm == "Gibbs") {
+        stop("Gibbs sampling has not been implemented for multi-modal",
+            " clustering yet. Use 'EM' instead.")
+    } else if (algorithm == "EM") {
+        stopIter <- 1
+        algorithmFun <- ".cCCalcEMProbZMM"
+    } else {
+        stop("Invalid input '", algorithm, "' for 'algorithm'")
+    }
+
+    if (zInitialize == "split") {
+        stop("Method 'split' for 'zInitialize' is not implemented for",
+            " multi-modal clustering yet. Use 'random' or 'predefined'",
+            " instead.")
+    }
+
+    if (yInitialize == "split") {
+        stop("Method 'split' for 'yInitialize' is not implemented for",
+            " multi-modal clustering yet. Use 'random' or 'predefined'",
+            " instead.")
+    }
+
     zInitialize <- match.arg(zInitialize)
     yInitialize <- match.arg(yInitialize)
+
 
     allChains <- seq(nchains)
 
@@ -298,12 +124,12 @@ celda_CG <- function(counts,
                 ncol(counts),
                 initial = zInit,
                 fixed = NULL)
-        } else if (zInitialize == "split") {
-            z <- .initializeSplitZ(
-                counts,
-                K = K,
-                alpha = alpha,
-                beta = beta)
+        # } else if (zInitialize == "split") {
+        #     z <- .initializeSplitZ(
+        #         counts,
+        #         K = K,
+        #         alpha = alpha,
+        #         beta = beta)
         } else {
             z <- .initializeCluster(K,
                 ncol(counts),
@@ -317,50 +143,67 @@ celda_CG <- function(counts,
                     " 'predefined'.")
             }
             y <- .initializeCluster(L,
-                    nrow(counts),
-                    initial = yInit,
-                    fixed = NULL)
-        } else if (yInitialize == "split") {
-            y <- .initializeSplitY(counts,
-                    L,
-                    beta = beta,
-                    delta = delta,
-                    gamma = gamma)
+                nrow(counts),
+                initial = yInit,
+                fixed = NULL)
+        # } else if (yInitialize == "split") {
+        #     y <- .initializeSplitY(counts,
+        #         L,
+        #         beta = beta,
+        #         delta = delta,
+        #         gamma = gamma)
         } else {
             y <- .initializeCluster(L,
-                    nrow(counts),
-                    initial = NULL,
-                    fixed = NULL)
+                nrow(counts),
+                initial = NULL,
+                fixed = NULL)
         }
+
+        y2 <- seq(nrow(counts2))
 
         zBest <- z
         yBest <- y
+        yBest2 <- y2
 
         ## Calculate counts one time up front
-        p <- .cCGDecomposeCounts(counts, s, z, y, K, L)
+        p <- .cCGDecomposeCountsMM(counts, counts2, s, z, y, y2, K, L)
         mCPByS <- p$mCPByS
         nTSByC <- p$nTSByC
+        nTSByC2 <- p$nTSByC2
         nTSByCP <- p$nTSByCP
+        nTSByCP2 <- p$nTSByCP2
         nCP <- p$nCP
+        nCP2 <- p$nCP2
         nByG <- p$nByG
+        nByG2 <- p$nByG2
         nByC <- p$nByC
+        nByC2 <- p$nByC2
         nByTS <- p$nByTS
+        nByTS2 <- p$nByTS2
         nGByTS <- p$nGByTS
+        nGByTS2 <- p$nGByTS2
         nGByCP <- p$nGByCP
+        nGByCP2 <- p$nGByCP2
         nM <- p$nM
         nG <- p$nG
+        nG2 <- p$nG2
         nS <- p$nS
         rm(p)
 
-        ll <- .cCGCalcLL(K = K,
+        ll <- .cCGCalcLLMM(K = K,
             L = L,
             mCPByS = mCPByS,
             nTSByCP = nTSByCP,
             nByG = nByG,
             nByTS = nByTS,
             nGByTS = nGByTS,
+            nTSByCP2 = nTSByCP2,
+            nByG2 = nByG2,
+            nByTS2 = nByTS2,
+            nGByTS2 = nGByTS2,
             nS = nS,
             nG = nG,
+            nG2 = nG2,
             alpha = alpha,
             beta = beta,
             delta = delta,
@@ -374,19 +217,19 @@ celda_CG <- function(counts,
             ## Gibbs sampling for each gene
             lgbeta <- lgamma(seq(0, max(nCP)) + beta)
             nextY <- .cGCalcGibbsProbY(counts = nGByCP,
-                    nTSByC = nTSByCP,
-                    nByTS = nByTS,
-                    nGByTS = nGByTS,
-                    nByG = nByG,
-                    y = y,
-                    L = L,
-                    nG = nG,
-                    beta = beta,
-                    delta = delta,
-                    gamma = gamma,
-                    lgbeta = lgbeta,
-                    lggamma = lggamma,
-                    lgdelta = lgdelta)
+                nTSByC = nTSByCP,
+                nByTS = nByTS,
+                nGByTS = nGByTS,
+                nByG = nByG,
+                y = y,
+                L = L,
+                nG = nG,
+                beta = beta,
+                delta = delta,
+                gamma = gamma,
+                lgbeta = lgbeta,
+                lggamma = lggamma,
+                lgdelta = lgdelta)
             nTSByCP <- nextY$nTSByC
             nGByTS <- nextY$nGByTS
             nByTS <- nextY$nByTS
@@ -394,73 +237,99 @@ celda_CG <- function(counts,
             y <- nextY$y
 
             ## Gibbs or EM sampling for each cell
-            nextZ <- do.call(algorithmFun, list(counts = nTSByC,
+            nextZ <- do.call(algorithmFun, list(
+                counts = nTSByC,
+                counts2 = nTSByC2,
                 mCPByS = mCPByS,
                 nGByCP = nTSByCP,
+                # nByC = nByC,
                 nCP = nCP,
-                nByC = nByC,
+                nGByCP2 = nGByCP2,
+                # nByC2 = nByC2,
+                nCP2 = nCP2,
                 z = z,
                 s = s,
                 K = K,
-                nG = L,
-                nM = nM,
+                # nG = L,
+                # nM = nM,
                 alpha = alpha,
                 beta = beta))
+
             mCPByS <- nextZ$mCPByS
             nTSByCP <- nextZ$nGByCP
             nCP <- nextZ$nCP
             nGByCP <- .colSumByGroupChange(counts, nGByCP, nextZ$z, z, K)
+            nTSByCP2 = nextZ$nTSByCP2
+            nCP2 = nextZ$nCP2
+            nGByCP2 = .colSumByGroupChange(counts2, nGByCP2, nextZ$z, z, K)
             z <- nextZ$z
 
             ## Perform split on i-th iteration defined by splitOnIter
-            tempLl <- .cCGCalcLL(K = K,
+            tempLl <- .cCGCalcLLMM(K = K,
                 L = L,
                 mCPByS = mCPByS,
                 nTSByCP = nTSByCP,
                 nByG = nByG,
                 nByTS = nByTS,
                 nGByTS = nGByTS,
+                nTSByCP2 = nTSByCP2,
+                nByG2 = nByG2,
+                nByTS2 = nByTS2,
+                nGByTS2 = nGByTS2,
                 nS = nS,
                 nG = nG,
+                nG2 = nG2,
                 alpha = alpha,
                 beta = beta,
                 delta = delta,
                 gamma = gamma)
 
             if (L > 2 & iter != maxIter &
-                (((numIterWithoutImprovement == stopIter &
-                    !all(tempLl > ll)) & isTRUE(splitOnLast)) |
-                        (splitOnIter > 0 & iter %% splitOnIter == 0 &
-                            isTRUE(doGeneSplit)))) {
+                    (((numIterWithoutImprovement == stopIter &
+                            !all(tempLl > ll)) & isTRUE(splitOnLast)) |
+                            (splitOnIter > 0 & iter %% splitOnIter == 0 &
+                                    isTRUE(doGeneSplit)))) {
                 .logMessages(date(),
                     " .... Determining if any gene clusters should be split.",
                     logfile = logfile,
                     append = TRUE,
                     sep = "",
                     verbose = verbose)
-                res <- .cCGSplitY(counts,
-                        y,
-                        mCPByS,
-                        nGByCP,
-                        nTSByC,
-                        nTSByCP,
-                        nByG,
-                        nByTS,
-                        nGByTS,
-                        nCP,
-                        s,
-                        z,
-                        K,
-                        L,
-                        nS,
-                        nG,
-                        alpha,
-                        beta,
-                        delta,
-                        gamma,
-                        yProb = t(nextY$probs),
-                        maxClustersToTry = max(L / 2, 10),
-                        minCell = 3)
+
+                res <- .cCGSplitYMM(
+                    counts,
+                    counts2,
+                    y,
+                    y2,
+                    mCPByS,
+                    nGByCP,
+                    nTSByC,
+                    nTSByCP,
+                    nByG,
+                    nByTS,
+                    nGByTS,
+                    nCP,
+                    nGByCP2,
+                    nTSByC2,
+                    nTSByCP2,
+                    nByG2,
+                    nByTS2,
+                    nGByTS2,
+                    nCP2,
+                    s,
+                    z,
+                    K,
+                    L,
+                    nS,
+                    nG,
+                    nG2,
+                    alpha,
+                    beta,
+                    delta,
+                    gamma,
+                    yProb = t(nextY$probs),
+                    maxClustersToTry = max(L / 2, 10),
+                    minCell = 3)
                 .logMessages(res$message,
                     logfile = logfile,
                     append = TRUE,
@@ -483,37 +352,46 @@ celda_CG <- function(counts,
             }
 
             if (K > 2 & iter != maxIter &
-                (((numIterWithoutImprovement == stopIter &
-                    !all(tempLl > ll)) & isTRUE(splitOnLast)) |
-                        (splitOnIter > 0 & iter %% splitOnIter == 0 &
-                            isTRUE(doCellSplit)))) {
+                    (((numIterWithoutImprovement == stopIter &
+                            !all(tempLl > ll)) & isTRUE(splitOnLast)) |
+                            (splitOnIter > 0 & iter %% splitOnIter == 0 &
+                                    isTRUE(doCellSplit)))) {
                 .logMessages(date(),
                     " .... Determining if any cell clusters should be split.",
                     logfile = logfile,
                     append = TRUE,
                     sep = "",
                     verbose = verbose)
-                res <- .cCGSplitZ(counts,
-                        mCPByS,
-                        nTSByC,
-                        nTSByCP,
-                        nByG,
-                        nByTS,
-                        nGByTS,
-                        nCP,
-                        s,
-                        z,
-                        K,
-                        L,
-                        nS,
-                        nG,
-                        alpha,
-                        beta,
-                        delta,
-                        gamma,
-                        zProb = t(nextZ$probs),
-                        maxClustersToTry = K,
-                        minCell = 3)
+                res <- .cCGSplitZMM(
+                    counts,
+                    counts2,
+                    mCPByS,
+                    nTSByC,
+                    nTSByCP,
+                    nByG,
+                    nByTS,
+                    nGByTS,
+                    nCP,
+                    nTSByC2,
+                    nTSByCP2,
+                    nByG2,
+                    nByTS2,
+                    nGByTS2,
+                    nCP2,
+                    s,
+                    z,
+                    K,
+                    L,
+                    nS,
+                    nG,
+                    nG2,
+                    alpha,
+                    beta,
+                    delta,
+                    gamma,
+                    zProb = t(nextZ$probs),
+                    maxClustersToTry = K,
+                    minCell = 3)
                 .logMessages(res$message,
                     logfile = logfile,
                     append = TRUE,
@@ -533,25 +411,36 @@ celda_CG <- function(counts,
                 nTSByCP <- res$nTSByCP
                 nCP <- res$nCP
                 nGByCP <- .colSumByGroup(counts, group = z, K = K)
+
+                nTSByCP2 <- res$nTSByCP2
+                nCP2 <- res$nCP2
+                nGByCP2 <- .colSumByGroup(counts2, group = z, K = K)
             }
 
             ## Calculate complete likelihood
-            tempLl <- .cCGCalcLL(K = K,
-                    L = L,
-                    mCPByS = mCPByS,
-                    nTSByCP = nTSByCP,
-                    nByG = nByG,
-                    nByTS = nByTS,
-                    nGByTS = nGByTS,
-                    nS = nS,
-                    nG = nG,
-                    alpha = alpha,
-                    beta = beta,
-                    delta = delta,
-                    gamma = gamma)
+            tempLl <- .cCGCalcLLMM(
+                K = K,
+                L = L,
+                mCPByS = mCPByS,
+                nTSByCP = nTSByCP,
+                nByG = nByG,
+                nByTS = nByTS,
+                nGByTS = nGByTS,
+                nTSByCP2 = nTSByCP2,
+                nByG2 = nByG2,
+                nByTS2 = nByTS2,
+                nGByTS2 = nGByTS2,
+                nS = nS,
+                nG = nG,
+                nG2 = nG2,
+                alpha = alpha,
+                beta = beta,
+                delta = delta,
+                gamma = gamma)
             if ((all(tempLl > ll)) | iter == 1) {
                 zBest <- z
                 yBest <- y
+                yBest2 <- y2
                 llBest <- tempLl
                 numIterWithoutImprovement <- 1L
             } else {
@@ -575,8 +464,10 @@ celda_CG <- function(counts,
             column = colnames(counts),
             sample = levels(sampleLabel))
 
-        result <- list(z = zBest,
+        result <- list(
+            z = zBest,
             y = yBest,
+            y2 = yBest2,
             completeLogLik = ll,
             finalLogLik = llBest,
             K = K,
@@ -588,8 +479,6 @@ celda_CG <- function(counts,
             sampleLabel = sampleLabel,
             names = names,
             countChecksum = countChecksum)
-
-        class(result) <- "celda_CG"
 
         if (is.null(bestResult) ||
                 result$finalLogLik > bestResult$finalLogLik) {
@@ -604,23 +493,25 @@ celda_CG <- function(counts,
             verbose = verbose)
     }
 
-    ## Peform reordering on final Z and Y assigments:
     bestResult <- methods::new("celda_CG",
-        clusters = list(z = zBest, y = yBest),
-        params = list(K = as.integer(K),
-            L = as.integer(L),
-            alpha = alpha,
-            beta = beta,
-            delta = delta,
-            gamma = gamma,
-            countChecksum = countChecksum),
-        completeLogLik = ll,
-        finalLogLik = llBest,
-        sampleLabel = sampleLabel,
-        names = names)
-    if (isTRUE(reorder)) {
-        bestResult <- .reorderCeldaCG(counts = counts, res = bestResult)
-    }
+        clusters = list(z = bestResult$z,
+            y = bestResult$y,
+            y2 = bestResult$y2),
+        params = list(K = as.integer(bestResult$K),
+            L = as.integer(bestResult$L),
+            alpha = bestResult$alpha,
+            beta = bestResult$beta,
+            delta = bestResult$delta,
+            gamma = bestResult$gamma,
+            countChecksum = bestResult$countChecksum),
+        completeLogLik = bestResult$completeLogLik,
+        finalLogLik = bestResult$finalLogLik,
+        sampleLabel = bestResult$sampleLabel,
+        names = bestResult$names)
+
+    # if (isTRUE(reorder)) {
+    #     bestResult <- .reorderCeldaCG(counts = counts, res = bestResult)
+    # }
 
     endTime <- Sys.time()
     .logMessages(paste(rep("-", 50), collapse = ""),
@@ -972,22 +863,29 @@ setMethod("factorizeMatrix", signature(celdaMod = "celda_CG"),
         return(res)
     })
 
-# Calculate the loglikelihood for the celda_CG model
-.cCGCalcLL <- function(K,
+# Calculate the loglikelihood for the multi-modal celda_CG model
+.cCGCalcLLMM <- function(K,
     L,
     mCPByS,
     nTSByCP,
     nByG,
     nByTS,
     nGByTS,
+    nTSByCP2,
+    nByG2,
+    nByTS2,
+    nGByTS2,
     nS,
     nG,
+    nG2,
     alpha,
     beta,
     delta,
     gamma) {
 
+    # nGByTS has pseudocounts so this is needed
     nG <- sum(nGByTS)
+    nG2 <- sum(nGByTS2)
 
     ## Calculate for "Theta" component
     a <- nS * lgamma(K * alpha)
@@ -1021,7 +919,32 @@ setMethod("factorizeMatrix", signature(celdaMod = "celda_CG"),
 
     etaLl <- a + b + c + d
 
-    final <- thetaLl + phiLl + psiLl + etaLl
+    ## multi-modal
+    ## Calculate for "Phi" component
+    a = K * lgamma(L * beta)
+    b = sum(lgamma(nTSByCP2 + beta))
+    c = -K * L * lgamma(beta)
+    d = -sum(lgamma(colSums(nTSByCP2 + beta)))
+
+    phi2Ll = a + b + c + d
+
+    ## Calculate for "Psi" component
+    a = sum(lgamma(nGByTS2 * delta))
+    b = sum(lgamma(nByG2 + delta))
+    c = -nG_2 * lgamma(delta)
+    d = -sum(lgamma(nByTS2 + (nByTS2 * delta)))
+
+    psi2Ll = a + b + c + d
+
+    ## Calculate for "Eta" side
+    a = lgamma(L * gamma)
+    b = sum(lgamma(nGByTS2 + gamma))
+    c = -L * lgamma(gamma)
+    d = -lgamma(sum(nGByTS2 + gamma))
+
+    eta2Ll = a + b + c + d
+
+    final <- thetaLl + phiLl + psiLl + etaLl + phi2Ll + psi2Ll + eta2Ll
     return(final)
 }
 
@@ -1094,18 +1017,18 @@ logLikelihoodcelda_CG <- function(counts,
     s <- as.integer(sampleLabel)
     p <- .cCGDecomposeCounts(counts, s, z, y, K, L)
     final <- .cCGCalcLL(K = K,
-            L = L,
-            mCPByS = p$mCPByS,
-            nTSByCP = p$nTSByCP,
-            nByG = p$nByG,
-            nByTS = p$nByTS,
-            nGByTS = p$nGByTS,
-            nS = p$nS,
-            nG = p$nG,
-            alpha = alpha,
-            beta = beta,
-            delta = delta,
-            gamma = gamma)
+        L = L,
+        mCPByS = p$mCPByS,
+        nTSByCP = p$nTSByCP,
+        nByG = p$nByG,
+        nByTS = p$nByTS,
+        nGByTS = p$nGByTS,
+        nS = p$nS,
+        nG = p$nG,
+        alpha = alpha,
+        beta = beta,
+        delta = delta,
+        gamma = gamma)
     return(final)
 }
 
@@ -1114,14 +1037,19 @@ logLikelihoodcelda_CG <- function(counts,
 # log likelihood calculation
 # @param counts Integer matrix. Rows represent features and columns represent
 # cells.
+# @param counts2 Integer matrix. It's needed only for the multi-modal celda
 # @param s Integer vector. Contains the sample label for each cell (column) in
 # the count matrix.
 # @param z Numeric vector. Denotes cell population labels.
 # @param y Numeric vector. Denotes feature module labels.
 # @param K Integer. Number of cell populations.
 # @param L Integer. Number of feature modules.
-.cCGDecomposeCounts <- function(counts, s, z, y, K, L) {
+.cCGDecomposeCountsMM <- function(counts, counts2, s, z, y, y2, K, L) {
     nS <- length(unique(s))
+    nG <- nrow(counts)
+    nG2 = nrow(counts2)
+    nM <- ncol(counts)
+
     mCPByS <- matrix(as.integer(table(factor(z, levels = seq(K)), s)),
         ncol = nS)
     nTSByC <- .rowSumByGroup(counts, group = y, L = L)
@@ -1134,21 +1062,37 @@ logLikelihoodcelda_CG <- function(counts,
     nGByTS <- tabulate(y, L) + 1 ## Add pseudogene to each module
     nGByCP <- .colSumByGroup(counts, group = z, K = K)
 
-    nG <- nrow(counts)
-    nM <- ncol(counts)
+    nTSByC2 = .rowSumByGroup(counts2, group = y2, L = L)
+    nTSByCP2 = .colSumByGroup(nTSByC2, group = z, K = K)
+    nCP2 = as.integer(colSums(nTSByCP2))
+    nByG2 = as.integer(rowSums(counts2))
+    nByC2 = as.integer(colSums(counts2))
+    nByTS2 = as.integer(.rowSumByGroup(matrix(nByG2, ncol = 1),
+        group = y2, L = L))
+    nGByTS2 = tabulate(y2, L) + 1 ## Add pseudogene to each module
+    nGByCP2 = .colSumByGroup(counts2, group = z, K = K)
 
     return(list(mCPByS = mCPByS,
-            nTSByC = nTSByC,
-            nTSByCP = nTSByCP,
-            nCP = nCP,
-            nByG = nByG,
-            nByC = nByC,
-            nByTS = nByTS,
-            nGByTS = nGByTS,
-            nGByCP = nGByCP,
-            nM = nM,
-            nG = nG,
-            nS = nS))
+        nTSByC = nTSByC,
+        nTSByCP = nTSByCP,
+        nCP = nCP,
+        nByG = nByG,
+        nByC = nByC,
+        nByTS = nByTS,
+        nGByTS = nGByTS,
+        nGByCP = nGByCP,
+        nTSByC2 = nTSByC2,
+        nTSByCP2 = nTSByCP2,
+        nCP2 = nCP2,
+        nByG2 = nByG2,
+        nByC2 = nByC2,
+        nByTS2 = nByTS2,
+        nGByTS2 = nGByTS2,
+        nGByCP2 = nGByCP2,
+        nM = nM,
+        nG = nG,
+        nG2 = nG2,
+        nS = nS))
 }
 
 
@@ -1311,8 +1255,8 @@ setMethod("perplexity", signature(celdaMod = "celda_CG"),
 
         res@clusters$y <- as.integer(as.factor(clusters(res)$y))
         fm <- factorizeMatrix(counts = counts,
-                celdaMod = res,
-                type = "posterior")
+            celdaMod = res,
+            type = "posterior")
         uniqueY <- sort(unique(clusters(res)$y))
         cs <- prop.table(t(fm$posterior$cellPopulation[uniqueY, ]), 2)
         d <- .cosineDist(cs)
@@ -1347,8 +1291,8 @@ setMethod("celdaHeatmap", signature(celdaMod = "celda_CG"),
         top <- celda::topRank(fm$proportions$module, n = nfeatures)
         ix <- unlist(top$index)
         norm <- normalizeCounts(counts,
-                normalize = "proportion",
-                transformationFun = sqrt)
+            normalize = "proportion",
+            transformationFun = sqrt)
         plotHeatmap(norm[ix, ],
             z = clusters(celdaMod)$z,
             y = clusters(celdaMod)$y[ix],
@@ -1540,7 +1484,7 @@ setMethod("celdaUmap",
 
     ## Checking if maxCells and minClusterSize will work
     if ((maxCells < ncol(counts)) &
-        (maxCells / minClusterSize < params(celdaMod)$K)) {
+            (maxCells / minClusterSize < params(celdaMod)$K)) {
 
         stop("Cannot distribute ",
             maxCells,
@@ -1581,7 +1525,7 @@ setMethod("celdaUmap",
         ## Rounding can cause number to be off by a few, so ceiling is used
         ## with a second round of subtraction
         clusterNToSample <- ceiling((clusterCellsToSample /
-            sum(clusterCellsToSample)) * totalCellsToRemove)
+                sum(clusterCellsToSample)) * totalCellsToRemove)
         diff <- sum(clusterNToSample) - totalCellsToRemove
         clusterNToSample[which.max(clusterNToSample)] <-
             clusterNToSample[which.max(clusterNToSample)] - diff
@@ -1753,11 +1697,11 @@ setMethod("featureModuleLookup", signature(celdaMod = "celda_CG"),
         for (x in seq(length(feature))) {
             if (feature[x] %in% rownames(counts)) {
                 list[x] <- clusters(celdaMod)$y[which(rownames(counts) ==
-                    feature[x])]
+                        feature[x])]
             } else {
                 list[x] <- paste0("No feature was identified matching '",
-                        feature[x],
-                        "'.")
+                    feature[x],
+                    "'.")
             }
         }
         names(list) <- feature
