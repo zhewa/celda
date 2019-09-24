@@ -473,7 +473,7 @@
         if (zTa[i] <= KSubclusters) {
             tempZ[ix] <- seq(currentTopZ + 1, currentTopZ + zTa[i])
         } else {
-            clustLabel <- .celda_C_MM(
+            clustLabel <- .celda_C_mm(
                 counts[, z == i],
                 counts2[, z == i],
                 K = KSubclusters,
@@ -515,7 +515,7 @@
     for (i in yToSplit) {
         clustLabel <- .celda_G(tempNGByCP[y == i, ],
             L = 2,
-            #yInitialize = "random",
+            yInitialize = "random",
             maxIter = 5,
             splitOnIter = -1,
             splitOnLast = FALSE,

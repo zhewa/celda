@@ -9,7 +9,7 @@
     maxIter = 200,
     splitOnIter = 10,
     splitOnLast = TRUE,
-    seed = 12345,
+    # seed = 12345,
     nchains = 3,
     zInitialize = c("random", "predefined"),
     countChecksum = NULL,
@@ -361,7 +361,7 @@
         nGByCP <- p$nGByCP
         nCP <- p$nCP
         nGByCP2 <- p$nGByCP2
-        nCP2 <- nCP2
+        nCP2 <- p$nCP2
     }
 
     return(list(mCPByS = mCPByS,

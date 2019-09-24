@@ -12,7 +12,7 @@
     maxIter = 200,
     splitOnIter = 10,
     splitOnLast = TRUE,
-    seed = 12345,
+    # seed = 12345,
     nchains = 3,
     # zInitialize = c("split", "random", "predefined"),
     # yInitialize = c("split", "random", "predefined"),
@@ -244,7 +244,7 @@
                 nGByCP = nTSByCP,
                 # nByC = nByC,
                 nCP = nCP,
-                nGByCP2 = nGByCP2,
+                nGByCP2 = nTSByCP2,
                 # nByC2 = nByC2,
                 nCP2 = nCP2,
                 z = z,
@@ -259,7 +259,7 @@
             nTSByCP <- nextZ$nGByCP
             nCP <- nextZ$nCP
             nGByCP <- .colSumByGroupChange(counts, nGByCP, nextZ$z, z, K)
-            nTSByCP2 = nextZ$nTSByCP2
+            nTSByCP2 = nextZ$nGByCP2
             nCP2 = nextZ$nCP2
             nGByCP2 = .colSumByGroupChange(counts2, nGByCP2, nextZ$z, z, K)
             z <- nextZ$z
@@ -931,7 +931,7 @@ setMethod("factorizeMatrix", signature(celdaMod = "celda_CG"),
     ## Calculate for "Psi" component
     a = sum(lgamma(nGByTS2 * delta))
     b = sum(lgamma(nByG2 + delta))
-    c = -nG_2 * lgamma(delta)
+    c = -nG2 * lgamma(delta)
     d = -sum(lgamma(nByTS2 + (nByTS2 * delta)))
 
     psi2Ll = a + b + c + d
@@ -1047,7 +1047,7 @@ logLikelihoodcelda_CG <- function(counts,
 .cCGDecomposeCountsMM <- function(counts, counts2, s, z, y, y2, K, L) {
     nS <- length(unique(s))
     nG <- nrow(counts)
-    nG2 = nrow(counts2)
+    nG2 <- nrow(counts2)
     nM <- ncol(counts)
 
     mCPByS <- matrix(as.integer(table(factor(z, levels = seq(K)), s)),
@@ -1062,15 +1062,15 @@ logLikelihoodcelda_CG <- function(counts,
     nGByTS <- tabulate(y, L) + 1 ## Add pseudogene to each module
     nGByCP <- .colSumByGroup(counts, group = z, K = K)
 
-    nTSByC2 = .rowSumByGroup(counts2, group = y2, L = L)
-    nTSByCP2 = .colSumByGroup(nTSByC2, group = z, K = K)
-    nCP2 = as.integer(colSums(nTSByCP2))
-    nByG2 = as.integer(rowSums(counts2))
-    nByC2 = as.integer(colSums(counts2))
-    nByTS2 = as.integer(.rowSumByGroup(matrix(nByG2, ncol = 1),
+    nTSByC2 <- .rowSumByGroup(counts2, group = y2, L = L)
+    nTSByCP2 <- .colSumByGroup(nTSByC2, group = z, K = K)
+    nCP2 <- as.integer(colSums(nTSByCP2))
+    nByG2 <- as.integer(rowSums(counts2))
+    nByC2 <- as.integer(colSums(counts2))
+    nByTS2 <- as.integer(.rowSumByGroup(matrix(nByG2, ncol = 1),
         group = y2, L = L))
-    nGByTS2 = tabulate(y2, L) + 1 ## Add pseudogene to each module
-    nGByCP2 = .colSumByGroup(counts2, group = z, K = K)
+    nGByTS2 <- tabulate(y2, L) + 1 ## Add pseudogene to each module
+    nGByCP2 <- .colSumByGroup(counts2, group = z, K = K)
 
     return(list(mCPByS = mCPByS,
         nTSByC = nTSByC,
