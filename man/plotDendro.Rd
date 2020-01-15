@@ -4,8 +4,14 @@
 \alias{plotDendro}
 \title{Plots dendrogram of `buildTreeHybrid` output}
 \usage{
-plotDendro(decisionTree, classLabel = NULL, addSensPrec = TRUE,
-  leafSize = 24, boxSize = 7, boxColor = "black")
+plotDendro(
+  decisionTree,
+  classLabel = NULL,
+  addSensPrec = TRUE,
+  leafSize = 24,
+  boxSize = 7,
+  boxColor = "black"
+)
 }
 \arguments{
 \item{decisionTree}{List object. The output of `celda::buildTreeHybrid`.}

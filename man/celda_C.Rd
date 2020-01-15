@@ -4,12 +4,26 @@
 \alias{celda_C}
 \title{Cell clustering with Celda}
 \usage{
-celda_C(counts, counts2 = NULL, sampleLabel = NULL, K, alpha = 1,
-  beta = 1, algorithm = c("EM", "Gibbs"), stopIter = 10,
-  maxIter = 200, splitOnIter = 10, splitOnLast = TRUE,
-  seed = 12345, nchains = 3, zInitialize = c("split", "random",
-  "predefined"), countChecksum = NULL, zInit = NULL, logfile = NULL,
-  verbose = TRUE)
+celda_C(
+  counts,
+  counts2 = NULL,
+  sampleLabel = NULL,
+  K,
+  alpha = 1,
+  beta = 1,
+  algorithm = c("EM", "Gibbs"),
+  stopIter = 10,
+  maxIter = 200,
+  splitOnIter = 10,
+  splitOnLast = TRUE,
+  seed = 12345,
+  nchains = 3,
+  zInitialize = c("split", "random", "predefined"),
+  countChecksum = NULL,
+  zInit = NULL,
+  logfile = NULL,
+  verbose = TRUE
+)
 }
 \arguments{
 \item{counts}{Integer matrix. Rows represent features and columns represent

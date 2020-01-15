@@ -4,39 +4,33 @@
 \alias{logLikelihoodcelda_CG}
 \title{Calculate Celda_CG log likelihood}
 \usage{
-logLikelihoodcelda_CG(counts, sampleLabel, z, y, K, L, alpha, beta, delta,
-  gamma)
+logLikelihoodcelda_CG(
+  counts,
+  sampleLabel,
+  z,
+  y,
+  K,
+  L,
+  alpha,
+  beta,
+  delta,
+  gamma
+)
 
-logLikelihoodcelda_CG(counts, sampleLabel, z, y, K, L, alpha, beta, delta,
-  gamma)
+logLikelihoodcelda_CG(
+  counts,
+  sampleLabel,
+  z,
+  y,
+  K,
+  L,
+  alpha,
+  beta,
+  delta,
+  gamma
+)
 }
 \arguments{
-\item{counts}{Integer matrix. Rows represent features and columns represent
-cells.}
-
-\item{sampleLabel}{Vector or factor. Denotes the sample label for each cell
-(column) in the count matrix.}
-
-\item{z}{Numeric vector. Denotes cell population labels.}
-
-\item{y}{Numeric vector. Denotes feature module labels.}
-
-\item{K}{Integer. Number of cell populations.}
-
-\item{L}{Integer. Number of feature modules.}
-
-\item{alpha}{Numeric. Concentration parameter for Theta. Adds a pseudocount
-to each cell population in each sample. Default 1.}
-
-\item{beta}{Numeric. Concentration parameter for Phi. Adds a pseudocount to
-each feature module in each cell population. Default 1.}
-
-\item{delta}{Numeric. Concentration parameter for Psi. Adds a pseudocount to
-each feature in each module. Default 1.}
-
-\item{gamma}{Numeric. Concentration parameter for Eta. Adds a pseudocount to
-the number of features in each module. Default 1.}
-
 \item{counts}{Integer matrix. Rows represent features and columns represent
 cells.}
 

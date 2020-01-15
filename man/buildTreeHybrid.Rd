@@ -4,9 +4,15 @@
 \alias{buildTreeHybrid}
 \title{Generate decision tree from single-cell clustering output.}
 \usage{
-buildTreeHybrid(features, class, oneoffMetric = c("modified F1",
-  "pairwise AUC"), threshold = 0.95, reuseFeatures = FALSE,
-  altSplit = TRUE, consecutiveOneoff = TRUE)
+buildTreeHybrid(
+  features,
+  class,
+  oneoffMetric = c("modified F1", "pairwise AUC"),
+  threshold = 0.95,
+  reuseFeatures = FALSE,
+  altSplit = TRUE,
+  consecutiveOneoff = TRUE
+)
 }
 \arguments{
 \item{features}{A L(features) by N(samples) numeric matrix.}
