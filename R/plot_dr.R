@@ -44,11 +44,14 @@ plotDimReduceGrid <- function(dim1,
     size,
     xlab,
     ylab,
+    limits = c(-2, 2),
     colorLow,
     colorMid,
     colorHigh,
+    midpoint = 0,
     varLabel,
-    headers = NULL) {
+    headers = NULL,
+    decreasing = FALSE) {
 
     df <- data.frame(dim1, dim2, t(as.data.frame(matrix)))
     naIx <- is.na(dim1) | is.na(dim2)
@@ -56,6 +59,14 @@ plotDimReduceGrid <- function(dim1,
 
     m <- reshape2::melt(df, id.vars = c("dim1", "dim2"))
     colnames(m) <- c(xlab, ylab, "facet", varLabel)
+
+    if (!is.null(decreasing)) {
+        m <- m[order(m$facet, m$Expression, decreasing = decreasing), ]
+    }
+
+    if (is.null(midpoint)) {
+        midpoint <- mean(m[, 4], trim = 0.1)
+    }
 
     if (isFALSE(is.null(headers))) {
         names(headers) <- levels(m$facet)
@@ -68,10 +79,12 @@ plotDimReduceGrid <- function(dim1,
                 ggplot2::aes_string(color = varLabel)) +
             ggplot2::facet_wrap(~ facet, labeller = headers) +
             ggplot2::theme_bw() +
-            ggplot2::scale_colour_gradient2(low = colorLow,
+            ggplot2::scale_colour_gradient2(
+                limits = limits,
+                low = colorLow,
                 high = colorHigh,
                 mid = colorMid,
-                midpoint = (max(m[, 4]) + min(m[, 4])) / 2,
+                midpoint = midpoint,
                 name = gsub("_", " ", varLabel)) +
             ggplot2::theme(strip.background = ggplot2::element_blank(),
                 panel.grid.major = ggplot2::element_blank(),
@@ -87,10 +100,12 @@ plotDimReduceGrid <- function(dim1,
                 ggplot2::aes_string(color = varLabel)) +
             ggplot2::facet_wrap(~ facet) +
             ggplot2::theme_bw() +
-            ggplot2::scale_colour_gradient2(low = colorLow,
+            ggplot2::scale_colour_gradient2(
+                limits = limits,
+                low = colorLow,
                 high = colorHigh,
                 mid = colorMid,
-                midpoint = (max(m[, 4]) + min(m[, 4])) / 2,
+                midpoint = midpoint,
                 name = gsub("_", " ", varLabel)) +
             ggplot2::theme(strip.background = ggplot2::element_blank(),
                 panel.grid.major = ggplot2::element_blank(),
@@ -158,9 +173,12 @@ plotDimReduceFeature <- function(dim1,
     size = 1,
     xlab = "Dimension_1",
     ylab = "Dimension_2",
+    limits = c(-2, 2),
     colorLow = "grey",
     colorMid = NULL,
-    colorHigh = "blue") {
+    colorHigh = "blue",
+    midpoint = 0,
+    decreasing = FALSE) {
 
     if (isFALSE(is.null(headers))) {
         if (length(headers) != length(features)) {
@@ -246,11 +264,14 @@ plotDimReduceFeature <- function(dim1,
         size,
         xlab,
         ylab,
+        limits = limits,
         colorLow,
         colorMid,
         colorHigh,
         varLabel,
-        headers)
+        headers,
+        midpoint = midpoint,
+        decreasing = decreasing)
 }
 
 
